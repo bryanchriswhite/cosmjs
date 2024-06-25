@@ -109,11 +109,11 @@ export class CosmWasmClient {
     return new CosmWasmClient(cometClient);
   }
 
-  protected constructor(cometClient: CometClient | undefined) {
-    if (cometClient) {
-      this.cometClient = cometClient;
+  protected constructor(tmClient: CometClient | undefined) {
+    if (tmClient) {
+      this.cometClient = tmClient;
       this.queryClient = QueryClient.withExtensions(
-        cometClient,
+        tmClient,
         setupAuthExtension,
         setupBankExtension,
         setupWasmExtension,
