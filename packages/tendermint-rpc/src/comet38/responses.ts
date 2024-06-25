@@ -60,6 +60,10 @@ export interface BlockResultsResponse {
   readonly results: readonly TxData[];
   readonly validatorUpdates: readonly ValidatorUpdate[];
   readonly consensusUpdates?: ConsensusParams;
+  // TODO_BLOCKER(@bryanchriswhite): Update this data structure to be accurate
+  //  instead of monkey-patching the old one.
+  //
+  // readonly finalizeBlockEvents: readonly Event[];
   readonly beginBlockEvents: readonly Event[];
   readonly endBlockEvents: readonly Event[];
 }

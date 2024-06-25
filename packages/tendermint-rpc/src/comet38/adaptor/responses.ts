@@ -287,21 +287,54 @@ export function decodeValidatorUpdate(data: RpcValidatorUpdate): responses.Valid
 interface RpcBlockResultsResponse {
   readonly height: string;
   readonly txs_results: readonly RpcTxData[] | null;
-  readonly begin_block_events: readonly RpcEvent[] | null;
-  readonly end_block_events: readonly RpcEvent[] | null;
+  readonly finalize_block_events: readonly Event[];
   readonly validator_updates: readonly RpcValidatorUpdate[] | null;
   readonly consensus_param_updates: RpcConsensusParams | null;
 }
 
 function decodeBlockResults(data: RpcBlockResultsResponse): responses.BlockResultsResponse {
+  // TODO_BLOCKER(@bryanchriswhite): Update this data structure to be accurate
+  //  instead of monkey-patching the old one.
+  const [beginBlockEvents, endBlockEvents] = groupBlockBeginAndEndEvents(data.finalize_block_events)
+
   return {
     height: apiToSmallInt(assertNotEmpty(data.height)),
     results: (data.txs_results || []).map(decodeTxData),
     validatorUpdates: (data.validator_updates || []).map(decodeValidatorUpdate),
     consensusUpdates: may(decodeConsensusParams, data.consensus_param_updates),
-    beginBlockEvents: decodeEvents(data.begin_block_events || []),
-    endBlockEvents: decodeEvents(data.end_block_events || []),
+    beginBlockEvents: decodeEvents(beginBlockEvents),
+    endBlockEvents: decodeEvents(endBlockEvents),
   };
+}
+
+function groupBlockBeginAndEndEvents(events: readonly RpcEvent[]): [RpcEvent[], RpcEvent[]] {
+  if (!events) {
+    // TODO(@bryanchriswhite): add logs.
+    return [[], []];
+  }
+
+  let [beginBlockEvents, endBlockEvents]: [RpcEvent[], RpcEvent[]] = [[], []];
+  for (const event of events) {
+    if (!event.attributes) {
+      continue
+    }
+
+    for (const attr of event.attributes) {
+      if (attr.key === "mode") {
+        if (attr.value === "BeginBlock") {
+          beginBlockEvents.push(event);
+          break
+        }
+
+        if (attr.value === "EndBlock") {
+          endBlockEvents.push(event);
+          break
+        }
+      }
+    }
+  }
+
+  return [beginBlockEvents, endBlockEvents];
 }
 
 interface RpcBlockId {
