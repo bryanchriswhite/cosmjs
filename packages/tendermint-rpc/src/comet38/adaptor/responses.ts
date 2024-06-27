@@ -292,10 +292,40 @@ interface RpcBlockResultsResponse {
   readonly consensus_param_updates: RpcConsensusParams | null;
 }
 
+function groupBlockBeginAndEndEvents(events: readonly RpcEvent[]): [RpcEvent[], RpcEvent[]] {
+  if (!events) {
+    // TODO(@bryanchriswhite): add logs.
+    return [[], []];
+  }
+
+  const [beginBlockEvents, endBlockEvents]: [RpcEvent[], RpcEvent[]] = [[], []];
+  for (const event of events) {
+    if (!event.attributes) {
+      continue;
+    }
+
+    for (const attr of event.attributes) {
+      if (attr.key === "mode") {
+        if (attr.value === "BeginBlock") {
+          beginBlockEvents.push(event);
+          break;
+        }
+
+        if (attr.value === "EndBlock") {
+          endBlockEvents.push(event);
+          break;
+        }
+      }
+    }
+  }
+
+  return [beginBlockEvents, endBlockEvents];
+}
+
 function decodeBlockResults(data: RpcBlockResultsResponse): responses.BlockResultsResponse {
   // TODO_BLOCKER(@bryanchriswhite): Update this data structure to be accurate
   //  instead of monkey-patching the old one.
-  const [beginBlockEvents, endBlockEvents] = groupBlockBeginAndEndEvents(data.finalize_block_events)
+  const [beginBlockEvents, endBlockEvents] = groupBlockBeginAndEndEvents(data.finalize_block_events);
 
   return {
     height: apiToSmallInt(assertNotEmpty(data.height)),
@@ -305,36 +335,6 @@ function decodeBlockResults(data: RpcBlockResultsResponse): responses.BlockResul
     beginBlockEvents: decodeEvents(beginBlockEvents),
     endBlockEvents: decodeEvents(endBlockEvents),
   };
-}
-
-function groupBlockBeginAndEndEvents(events: readonly RpcEvent[]): [RpcEvent[], RpcEvent[]] {
-  if (!events) {
-    // TODO(@bryanchriswhite): add logs.
-    return [[], []];
-  }
-
-  let [beginBlockEvents, endBlockEvents]: [RpcEvent[], RpcEvent[]] = [[], []];
-  for (const event of events) {
-    if (!event.attributes) {
-      continue
-    }
-
-    for (const attr of event.attributes) {
-      if (attr.key === "mode") {
-        if (attr.value === "BeginBlock") {
-          beginBlockEvents.push(event);
-          break
-        }
-
-        if (attr.value === "EndBlock") {
-          endBlockEvents.push(event);
-          break
-        }
-      }
-    }
-  }
-
-  return [beginBlockEvents, endBlockEvents];
 }
 
 interface RpcBlockId {
